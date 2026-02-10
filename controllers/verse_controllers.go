@@ -90,11 +90,9 @@ func SubscribeToDailyVerse(c *gin.Context) {
 		return
 	}
 
-	// Only allow specific hours
-	validHours := map[int]bool{9: true, 10: true, 11: true}
-	if !validHours[req.SendHour] {
+	if req.SendHour < 0 || req.SendHour > 23 {
 		c.JSON(http.StatusBadRequest, gin.H{
-			"error": "send_hour must be 9, 10, or 11",
+			"error": "send_hour must be between 0 and 23",
 		})
 		return
 	}
