@@ -192,3 +192,22 @@ func GetAllSubscriptions(c *gin.Context) {
 
 	c.JSON(http.StatusOK, subscriptions)
 }
+
+func DeleteAllSubscriptions(c *gin.Context) {
+	result, err := database.DB.Exec(
+		"DELETE FROM daily_verse_subscriptions;",
+	)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"error": "failed to delete subscriptions",
+		})
+		return
+	}
+
+	rowsAffected, _ := result.RowsAffected()
+
+	c.JSON(http.StatusOK, gin.H{
+		"success":      true,
+		"rows_deleted": rowsAffected,
+	})
+}

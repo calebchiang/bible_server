@@ -15,5 +15,7 @@ func VerseRoutes(r *gin.Engine) {
 		verse.GET("/random", controllers.GetRandomVerse)
 		verse.POST("/subscribe", controllers.SubscribeToDailyVerse)
 		verse.GET("/subscriptions", controllers.GetAllSubscriptions)
+
+		verse.DELETE("/subscriptions", controllers.DeleteAllSubscriptions)
 	}
 }
