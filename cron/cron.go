@@ -15,20 +15,26 @@ type Subscription struct {
 	DeviceToken  string
 	Timezone     string
 	SendHour     int
-	LastSentDate *string
+	LastSentDate *time.Time
 }
 
 func main() {
 	_ = godotenv.Load()
 	log.Println("⏰ Daily Verse cron started")
 
+	// SQLite (Bible content)
 	if err := database.Connect(); err != nil {
 		log.Fatal("Failed to connect to SQLite:", err)
 	}
 
+	// Postgres (subscriptions)
+	if err := database.ConnectPostgres(); err != nil {
+		log.Fatal("Failed to connect to Postgres:", err)
+	}
+
 	nowUTC := time.Now().UTC()
 
-	rows, err := database.DB.Query(`
+	rows, err := database.PostgresDB.Query(`
 		SELECT
 			device_token,
 			timezone,
@@ -60,16 +66,10 @@ func main() {
 		}
 
 		localNow := nowUTC.In(loc)
-		// localHour := localNow.Hour()
 		localDate := localNow.Format("2006-01-02")
 
-		// // Not this user's hour → skip
-		// if localHour != sub.SendHour {
-		// 	continue
-		// }
-
 		// Already sent today → skip
-		if sub.LastSentDate != nil && *sub.LastSentDate == localDate {
+		if sub.LastSentDate != nil && sub.LastSentDate.Format("2006-01-02") == localDate {
 			continue
 		}
 
@@ -84,21 +84,19 @@ func main() {
 			"Verse of the Day",
 			fmt.Sprintf("%s — %s", verse.Text, verse.Reference),
 		)
-
 		if err != nil {
 			log.Println("❌ APNs send failed:", err)
 			continue
 		}
 
-		// Mark as sent for today (local date)
-		_, err = database.DB.Exec(
+		// Mark as sent for today
+		_, err = database.PostgresDB.Exec(
 			`
 			UPDATE daily_verse_subscriptions
-			SET last_sent_date = ?, updated_at = ?
-			WHERE device_token = ?;
+			SET last_sent_date = $1, updated_at = now()
+			WHERE device_token = $2;
 			`,
-			localDate,
-			nowUTC.Format(time.RFC3339),
+			localNow,
 			sub.DeviceToken,
 		)
 		if err != nil {

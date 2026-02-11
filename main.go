@@ -13,6 +13,10 @@ func main() {
 		log.Fatal("Failed to connect to SQLite:", err)
 	}
 
+	if err := database.ConnectPostgres(); err != nil {
+		log.Fatal("Failed to connect to Postgres:", err)
+	}
+
 	r := gin.Default()
 
 	r.GET("/health", func(c *gin.Context) {

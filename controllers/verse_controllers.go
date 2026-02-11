@@ -97,7 +97,7 @@ func SubscribeToDailyVerse(c *gin.Context) {
 		return
 	}
 
-	now := time.Now().UTC().Format(time.RFC3339)
+	now := time.Now().UTC()
 
 	query := `
 	INSERT INTO daily_verse_subscriptions (
@@ -107,15 +107,15 @@ func SubscribeToDailyVerse(c *gin.Context) {
 		last_sent_date,
 		created_at,
 		updated_at
-	) VALUES (?, ?, ?, NULL, ?, ?)
-	ON CONFLICT(device_token) DO UPDATE SET
-		timezone = excluded.timezone,
-		send_hour = excluded.send_hour,
+	) VALUES ($1, $2, $3, NULL, $4, $5)
+	ON CONFLICT (device_token) DO UPDATE SET
+		timezone = EXCLUDED.timezone,
+		send_hour = EXCLUDED.send_hour,
 		last_sent_date = NULL,
-		updated_at = excluded.updated_at;
+		updated_at = EXCLUDED.updated_at;
 	`
 
-	_, err := database.DB.Exec(
+	_, err := database.PostgresDB.Exec(
 		query,
 		req.DeviceToken,
 		req.Timezone,
@@ -137,12 +137,12 @@ func SubscribeToDailyVerse(c *gin.Context) {
 }
 
 type SubscriptionRow struct {
-	DeviceToken  string  `json:"device_token"`
-	Timezone     string  `json:"timezone"`
-	SendHour     int     `json:"send_hour"`
-	LastSentDate *string `json:"last_sent_date"`
-	CreatedAt    string  `json:"created_at"`
-	UpdatedAt    string  `json:"updated_at"`
+	DeviceToken  string     `json:"device_token"`
+	Timezone     string     `json:"timezone"`
+	SendHour     int        `json:"send_hour"`
+	LastSentDate *time.Time `json:"last_sent_date"`
+	CreatedAt    string     `json:"created_at"`
+	UpdatedAt    string     `json:"updated_at"`
 }
 
 func GetAllSubscriptions(c *gin.Context) {
@@ -158,7 +158,7 @@ func GetAllSubscriptions(c *gin.Context) {
 	ORDER BY created_at DESC;
 	`
 
-	rows, err := database.DB.Query(query)
+	rows, err := database.PostgresDB.Query(query)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"error": "failed to query subscriptions",
@@ -192,7 +192,7 @@ func GetAllSubscriptions(c *gin.Context) {
 }
 
 func DeleteAllSubscriptions(c *gin.Context) {
-	result, err := database.DB.Exec(
+	result, err := database.PostgresDB.Exec(
 		"DELETE FROM daily_verse_subscriptions;",
 	)
 	if err != nil {
